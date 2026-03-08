@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MASSAGE Indonesia wellness</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Plus+Jakarta+Sans:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        [x-cloak] { display: none !important; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #050505; color: #e2e8f0; }
+        .serif { font-family: 'Playfair Display', serif; }
+        .gold-text { background: linear-gradient(to right, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .btn-gold { background: linear-gradient(45deg, #B38728, #FBF5B7); color: #000; transition: 0.3s; }
+        .btn-wa { background: #25D366; color: white; transition: 0.3s; }
+        .btn-wa:hover { background: #1eb954; transform: translateY(-2px); }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Animasi Radar */
+        .radar-sweep { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(234, 179, 8, 0.5); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        .radar-sweep:nth-child(2) { animation-delay: 0.5s; }
+        .radar-sweep:nth-child(3) { animation-delay: 1s; }
+    </style>
+</head>
+<body x-data="massageSystem()" x-init="initApp()">
+
+    <div x-show="modalState !== 'none'" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+        
+        <div x-show="modalState === 'select_mode'" class="w-full max-w-sm text-center animate-fade-in my-auto">
+            <h2 class="serif gold-text text-3xl mb-2 italic">Ganti Mode</h2>
+            <p class="text-gray-400 text-xs mb-8">Silakan pilih akses gerbang Anda.</p>
+            
+            <div class="space-y-4">
+                <button @click="modalState = 'login_therapist'" class="w-full glass py-5 rounded-3xl flex items-center justify-center gap-4 hover:border-yellow-500/50 transition-all">
+                    <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-yellow-500"><i class="fa-solid fa-spa"></i></div>
+                    <span class="font-black tracking-widest text-sm uppercase">Login Terapis</span>
+                </button>
+                <button @click="modalState = 'login_admin'" class="w-full glass py-5 rounded-3xl flex items-center justify-center gap-4 hover:border-yellow-500/50 transition-all">
+                    <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50"><i class="fa-solid fa-shield-halved"></i></div>
+                    <span class="font-black tracking-widest text-sm uppercase text-gray-400">Panel Admin (Buat Kode)</span>
+                </button>
+            </div>
+            <button @click="closeModal()" class="mt-8 text-red-400 text-xs font-bold tracking-widest uppercase">Batal</button>
+        </div>
+
+        <div x-show="modalState === 'login_therapist'" class="w-full max-w-xs text-center animate-fade-in my-auto">
+            <h2 class="serif gold-text text-3xl mb-8 italic">Akses Terapis</h2>
+            <div class="flex justify-center gap-3 mb-10">
+                <template x-for="i in 4">
+                    <div class="w-3 h-3 rounded-full border border-yellow-600 transition-all" :class="pinInput.length >= i ? 'bg-yellow-500 scale-125' : ''"></div>
+                </template>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <template x-for="n in [1,2,3,4,5,6,7,8,9, 'C', 0, 'X']">
+                    <button @click="handleTherapistPin(n)" class="glass w-16 h-16 rounded-full text-xl font-bold flex items-center justify-center hover:bg-white/10" x-text="n"></button>
+                </template>
+            </div>
+            <p x-show="error" x-text="error" class="text-red-500 mt-6 text-[10px] font-bold tracking-widest uppercase"></p>
+        </div>
+
+        <div x-show="modalState === 'login_admin'" class="w-full max-w-xs text-center animate-fade-in my-auto">
+            <div class="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-6 text-gray-400">
+                <i class="fa-solid fa-lock text-2xl"></i>
+            </div>
+            <h2 class="serif text-2xl mb-2 text-white">Otoritas Admin</h2>
+            <p class="text-gray-500 text-xs mb-8">Masukkan password master.</p>
+            
+            <input type="password" x-model="adminPassInput" placeholder="Password..." class="w-full glass text-center px-4 py-4 rounded-2xl mb-4 focus:border-yellow-500 outline-none text-xl tracking-widest">
+            <p x-show="error" x-text="error" class="text-red-500 mb-4 text-[10px] font-bold tracking-widest uppercase"></p>
+
+            <button @click="verifyAdmin()" class="w-full btn-gold py-4 rounded-2xl font-black text-xs tracking-widest uppercase mb-4">Verifikasi</button>
+            <button @click="modalState = 'select_mode'; error=''" class="text-gray-500 text-xs font-bold uppercase tracking-widest">Kembali</button>
+        </div>
+
+        <div x-show="modalState === 'admin_panel'" class="w-full max-w-sm text-center animate-fade-in py-10">
+            <h2 class="serif gold-text text-3xl mb-2 italic">Kode Akses Terapis</h2>
+            <p class="text-gray-400 text-xs mb-8">Kode ini berlaku selama 30 hari.</p>
+            
+            <div class="glass p-8 rounded-[3rem] mb-6 border-yellow-500/30">
+                <p class="text-[10px] uppercase tracking-[0.3em] text-yellow-500 font-bold mb-4">PIN AKTIF</p>
+                <h1 class="text-6xl font-black tracking-[0.2em] text-white" x-text="pinData.code || '----'"></h1>
+                <p class="text-[10px] text-gray-400 mt-4" x-show="pinData.expiresText">Valid s/d: <span x-text="pinData.expiresText" class="text-white font-bold"></span></p>
+            </div>
+
+            <button @click="generateRandomCode()" class="w-full btn-gold py-5 rounded-3xl font-black text-xs tracking-widest uppercase mb-8 shadow-xl shadow-yellow-500/10">
+                <i class="fa-solid fa-arrows-rotate mr-2"></i> Acak Kode Baru (30 Hari)
+            </button>
+            <button @click="closeModal()" class="text-gray-500 text-xs font-bold uppercase tracking-widest mb-10">Tutup Panel</button>
+
+            <div class="text-left mt-8 border-t border-white/10 pt-8">
+                <h3 class="font-bold text-sm text-yellow-500 mb-4 uppercase tracking-widest">FAQ Massage Indonesia Wellness</h3>
+                <div class="space-y-4 text-xs text-gray-300">
+                    <div class="glass p-4 rounded-2xl">
+                        <p class="font-bold text-white mb-1">Berapa lama PIN Terapis berlaku?</p>
+                        <p class="text-gray-400">PIN yang dibuat oleh Admin berlaku otomatis selama 30 hari kalender. Terapis tidak bisa login jika PIN sudah kedaluwarsa.</p>
+                    </div>
+                    <div class="glass p-4 rounded-2xl">
+                        <p class="font-bold text-white mb-1">Bagaimana Terapis menerima pesanan?</p>
+                        <p class="text-gray-400">Pesanan dari pelanggan akan muncul di panel Terapis. Saat Terapis klik "AMBIL & HUBUNGI", aplikasi WhatsApp akan terbuka otomatis menuju nomor pelanggan.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="isSearching" x-cloak class="fixed inset-0 z-[110] bg-[#050505]/95 backdrop-blur-md flex flex-col items-center justify-center">
+        <div class="relative w-40 h-40 flex items-center justify-center mb-10">
+            <div class="radar-sweep"></div>
+            <div class="radar-sweep"></div>
+            <div class="radar-sweep"></div>
+            <div class="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center z-10 shadow-[0_0_30px_rgba(234,179,8,0.5)]">
+                <i class="fa-solid fa-location-crosshairs text-3xl text-yellow-500 animate-pulse"></i>
+            </div>
+        </div>
+        <h2 class="serif gold-text text-3xl italic mb-2 animate-pulse">Memindai Lokasi...</h2>
+        <p class="text-gray-400 text-xs tracking-widest uppercase">Mencari Terapis Terdekat</p>
+    </div>
+
+    <div class="max-w-md mx-auto min-h-screen flex flex-col relative bg-[#080808] shadow-2xl overflow-hidden">
+        
+        <nav class="p-6 flex justify-between items-center border-b border-white/5 sticky top-0 bg-[#080808]/80 backdrop-blur-md z-40">
+            <div class="max-w-[65%]">
+                <h1 class="serif text-xl gold-text italic font-bold leading-tight">MASSAGE Indonesia wellness</h1>
+            </div>
+            <button @click="openModeSelector()" class="glass px-4 py-2 rounded-full text-[10px] font-black tracking-widest border-yellow-500/20 text-yellow-500 whitespace-nowrap">
+                <i class="fa-solid fa-right-left mr-1"></i>
+                <span x-text="role === 'customer' ? 'GANTI MODE' : 'KELUAR'"></span>
+            </button>
+        </nav>
+
+        <div x-show="role === 'customer'" x-cloak class="flex-1 p-6 pb-40 animate-fade-in overflow-y-auto">
+            <div class="mb-8">
+                <h2 class="serif text-4xl italic mb-2">Pesan Wellness</h2>
+                <p class="text-gray-500 text-xs">Isi data, dan terapis kami akan menghubungi Anda via WhatsApp.</p>
+            </div>
+
+            <div class="space-y-6">
+                <div class="glass p-6 rounded-[2.5rem] space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-500 ml-2 uppercase tracking-widest">Nama Lengkap</label>
+                        <input x-model="form.name" type="text" placeholder="Nama Anda..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-yellow-500 outline-none text-sm transition-all text-white">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-500 ml-2 uppercase tracking-widest">Nomor WhatsApp</label>
+                        <div class="flex items-center bg-white/5 border border-white/10 rounded-2xl px-4 py-1 focus-within:border-yellow-500 transition-all">
+                            <i class="fa-brands fa-whatsapp text-green-500 mr-2 text-lg"></i>
+                            <input x-model="form.whatsapp" type="tel" placeholder="0812xxxx..." class="w-full bg-transparent py-3 outline-none text-sm text-white">
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-500 ml-2 uppercase tracking-widest">Pilih Layanan</label>
+                        <div class="relative">
+                            <select x-model="form.service" class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-yellow-500 outline-none text-sm text-white appearance-none transition-all">
+                                <option class="text-black" value="BODY MASSAGE">BODY MASSAGE</option>
+                                <option class="text-black" value="BODY MASSAGE TOTOK WAJAH">BODY MASSAGE TOTOK WAJAH</option>
+                                <option class="text-black" value="BODY MASSAGE AROMATERAPI">BODY MASSAGE AROMATERAPI</option>
+                                <option class="text-black" value="BODY MASSAGE SCRUB">BODY MASSAGE SCRUB</option>
+                                <option class="text-black" value="BODY MASSAGE KEROK">BODY MASSAGE KEROK</option>
+                                <option class="text-black" value="BODY MASSAGE REFLEKSI">BODY MASSAGE REFLEKSI</option>
+                                <option class="text-black" value="BODY MASSAGE VITALITY">BODY MASSAGE VITALITY</option>
+                                <option class="text-black" value="BODY TO BODY MASSAGE">BODY TO BODY MASSAGE</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-500 ml-2 uppercase tracking-widest">Lokasi/Alamat</label>
+                        <textarea x-model="form.address" placeholder="Detail alamat lengkap..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-yellow-500 outline-none text-sm h-24 transition-all text-white"></textarea>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-500 ml-2 uppercase tracking-widest">Tawaran Harga (IDR)</label>
+                        <input x-model="form.price" type="number" class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 focus:border-yellow-500 outline-none text-2xl font-black gold-text transition-all">
+                    </div>
+                </div>
+
+                <button @click="submitOrder()" class="btn-gold w-full py-5 rounded-3xl font-black text-xs tracking-widest shadow-xl shadow-yellow-500/10 uppercase">
+                    Kirim Pesanan Sekarang
+                </button>
+            </div>
+        </div>
+
+        <div x-show="role === 'therapist'" x-cloak class="flex-1 p-6 pb-40 animate-fade-in overflow-y-auto">
+            <div class="flex justify-between items-end mb-8">
+                <div>
+                    <h2 class="serif text-3xl italic">Antrean Masuk</h2>
+                    <p class="text-gray-500 text-xs">Hubungi pelanggan via WhatsApp.</p>
+                </div>
+                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
+            </div>
+
+            <template x-if="orders.length === 0">
+                <div class="text-center py-20 opacity-20">
+                    <i class="fa-solid fa-bed text-5xl mb-4"></i>
+                    <p class="text-sm">Menunggu pelanggan...</p>
+                </div>
+            </template>
+
+            <div class="space-y-4">
+                <template x-for="order in orders" :key="order.id">
+                    <div class="glass p-5 rounded-[2.5rem] border-l-4 border-yellow-500">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h4 class="font-black text-lg text-white" x-text="order.customer"></h4>
+                                <p class="text-[10px] text-gray-400 mt-1"><i class="fa-brands fa-whatsapp text-green-500"></i> <span x-text="order.whatsapp"></span></p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] text-gray-500 font-bold uppercase">Harga</p>
+                                <p class="font-black text-yellow-500" x-text="'Rp ' + (order.price/1000) + 'k'"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white/5 p-3 rounded-2xl mb-4 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500"><i class="fa-solid fa-spa text-xs"></i></div>
+                            <div>
+                                <p class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Layanan</p>
+                                <p class="text-xs font-bold text-white" x-text="order.service"></p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white/5 p-4 rounded-2xl mb-6">
+                            <p class="text-[8px] text-gray-500 uppercase font-black mb-1 tracking-widest">Alamat:</p>
+                            <p class="text-xs italic text-gray-300 leading-relaxed" x-text="order.address"></p>
+                        </div>
+                        
+                        <div class="flex flex-col gap-2">
+                            <button @click="acceptOrder(order)" class="w-full btn-wa py-4 rounded-xl font-black text-[10px] flex items-center justify-center gap-2 shadow-lg shadow-green-500/20">
+                                <i class="fa-brands fa-whatsapp text-lg"></i> AMBIL & HUBUNGI WA
+                            </button>
+                            <button @click="declineOrder(order.id)" class="w-full glass py-3 rounded-xl font-black text-[10px] text-red-400">ABAIKAN</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div x-show="role === 'customer'" class="fixed bottom-6 left-6 right-6 z-40">
+            <div class="glass rounded-[2.5rem] p-4 flex flex-col items-center shadow-2xl">
+                <p class="text-[10px] font-bold text-gray-400 mb-3 tracking-wide">Jika butuh bantuan hubungi kami</p>
+                <a href="https://wa.me/6281401610376?text=Halo%20Massage%20Indonesia%2C%20saya%20butuh%20bantuan" 
+                   target="_blank"
+                   class="btn-wa w-full py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-green-500/20">
+                    <i class="fa-brands fa-whatsapp text-2xl"></i>
+                    <span class="font-black text-xs tracking-widest uppercase">WhatsApp Support</span>
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function massageSystem() {
+            return {
+                role: 'customer', 
+                modalState: 'none', 
+                isSearching: false, // State untuk Radar
+                
+                // PIN Data (Disimpan di localStorage)
+                pinData: {
+                    code: '1234',
+                    expiresAt: 0,
+                    expiresText: ''
+                },
+                
+                pinInput: '',
+                adminPassInput: '',
+                error: '',
+                
+                orders: [],
+                form: { name: '', whatsapp: '', service: 'BODY MASSAGE', address: '', price: 150000 },
+
+                initApp() {
+                    // Ambil PIN dari storage saat web dimuat
+                    const savedPin = localStorage.getItem('massage_pin_data');
+                    if(savedPin) {
+                        this.pinData = JSON.parse(savedPin);
+                    }
+                },
+
+                openModeSelector() {
+                    if (this.role === 'customer') this.modalState = 'select_mode';
+                    else this.role = 'customer';
+                },
+
+                closeModal() {
+                    this.modalState = 'none';
+                    this.error = '';
+                    this.pinInput = '';
+                    this.adminPassInput = '';
+                },
+
+                // VALIDASI PIN TERAPIS
+                handleTherapistPin(val) {
+                    if (val === 'C') { this.pinInput = ''; return; }
+                    if (val === 'X') { this.modalState = 'select_mode'; this.pinInput = ''; this.error = ''; return; }
+                    
+                    if (this.pinInput.length < 4) {
+                        this.pinInput += val;
+                        if (this.pinInput.length === 4) {
+  
